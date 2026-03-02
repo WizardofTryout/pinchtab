@@ -96,7 +96,27 @@ export default function ProfileDetailsModal({
     }`
 
   return (
-    <Modal open={!!profile} onClose={onClose} title={profile.name} wide>
+    <Modal
+      open={!!profile}
+      onClose={onClose}
+      title={profile.name}
+      wide
+      actions={
+        <div className="flex w-full items-center justify-between">
+          <Button variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="primary" onClick={handleSave}>
+              Save
+            </Button>
+            <Button variant="secondary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      }
+    >
       {/* Tabs */}
       <div className="-mx-4 -mt-2 mb-4 flex border-b border-border-subtle px-4">
         <button className={tabClasses('profile')} onClick={() => setActiveTab('profile')}>
@@ -278,20 +298,6 @@ export default function ProfileDetailsModal({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="-mx-4 -mb-4 mt-4 flex items-center justify-between border-t border-border-subtle px-4 pt-4">
-        <Button variant="danger" onClick={onDelete}>
-          Delete
-        </Button>
-        <div className="flex gap-2">
-          <Button variant="primary" onClick={handleSave}>
-            Save
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
     </Modal>
   )
 }

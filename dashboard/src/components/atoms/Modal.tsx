@@ -41,7 +41,7 @@ export default function Modal({ open, onClose, title, children, actions, wide }:
         <h3 className="mb-4 text-lg font-semibold text-text-primary">{title}</h3>
         <div className="text-sm text-text-secondary">{children}</div>
         <div className="mt-5 flex justify-end gap-2">
-          {actions || (
+          {actions ?? (
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
