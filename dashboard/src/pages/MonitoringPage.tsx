@@ -5,7 +5,7 @@ import { TabsChart, InstanceListItem, TabItem } from "../components/molecules";
 import type { InstanceTab } from "../generated/types";
 import * as api from "../services/api";
 
-const POLL_INTERVAL = 30000; // 30 seconds
+const DEFAULT_POLL_INTERVAL = 30; // seconds
 
 export default function MonitoringPage() {
   const {
@@ -39,6 +39,8 @@ export default function MonitoringPage() {
 
   // Fetch tabs and optionally memory for all running instances
   const memoryEnabled = settings.monitoring?.memoryMetrics ?? false;
+  const pollInterval =
+    (settings.monitoring?.pollInterval || DEFAULT_POLL_INTERVAL) * 1000;
 
   const fetchAllInstanceData = useCallback(async () => {
     const runningInstances = instances.filter((i) => i.status === "running");
@@ -109,11 +111,11 @@ export default function MonitoringPage() {
   // Poll tabs
   useEffect(() => {
     fetchAllInstanceData();
-    pollRef.current = setInterval(fetchAllInstanceData, POLL_INTERVAL);
+    pollRef.current = setInterval(fetchAllInstanceData, pollInterval);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [fetchAllInstanceData]);
+  }, [fetchAllInstanceData, pollInterval]);
 
   // Auto-select first running instance
   useEffect(() => {

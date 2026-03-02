@@ -199,6 +199,38 @@ export default function SettingsPage() {
                 className="h-4 w-4"
               />
             </label>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-text-secondary">
+                  Poll Interval
+                </span>
+                <p className="text-xs text-text-muted">
+                  How often to fetch tab/memory data
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={5}
+                  max={120}
+                  step={5}
+                  value={local.monitoring?.pollInterval ?? 30}
+                  onChange={(e) =>
+                    setLocal({
+                      ...local,
+                      monitoring: {
+                        ...local.monitoring,
+                        pollInterval: +e.target.value,
+                      },
+                    })
+                  }
+                  className="w-24"
+                />
+                <span className="w-12 text-right text-sm text-text-muted">
+                  {local.monitoring?.pollInterval ?? 30}s
+                </span>
+              </div>
+            </div>
           </div>
         </Card>
 

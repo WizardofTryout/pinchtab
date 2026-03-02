@@ -96,6 +96,7 @@ export interface Settings {
  */
 export interface MonitoringSettings {
   memoryMetrics: boolean; // Enable per-tab memory aggregation (can be heavy)
+  pollInterval: number /* int */; // Poll interval in seconds (default 30)
 }
 /**
  * ServerInfo contains health/status information.

@@ -68,7 +68,7 @@ const defaultSettings: Settings = {
   screencast: { fps: 1, quality: 30, maxWidth: 800 },
   stealth: "light",
   browser: { blockImages: false, blockMedia: false, noAnimations: false },
-  monitoring: { memoryMetrics: false },
+  monitoring: { memoryMetrics: false, pollInterval: 30 },
 };
 
 const SETTINGS_KEY = "pinchtab_settings";

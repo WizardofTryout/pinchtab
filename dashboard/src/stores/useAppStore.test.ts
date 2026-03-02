@@ -139,7 +139,7 @@ describe("useAppStore", () => {
         screencast: { fps: 5, quality: 50, maxWidth: 1024 },
         stealth: "strict" as const,
         browser: { blockImages: true, blockMedia: true, noAnimations: true },
-        monitoring: { memoryMetrics: true },
+        monitoring: { memoryMetrics: true, pollInterval: 30 },
       };
       useAppStore.getState().setSettings(newSettings);
       expect(useAppStore.getState().settings).toEqual(newSettings);
@@ -150,7 +150,7 @@ describe("useAppStore", () => {
         screencast: { fps: 10, quality: 80, maxWidth: 1280 },
         stealth: "full" as const,
         browser: { blockImages: false, blockMedia: false, noAnimations: false },
-        monitoring: { memoryMetrics: true },
+        monitoring: { memoryMetrics: true, pollInterval: 30 },
       };
       useAppStore.getState().setSettings(newSettings);
 
