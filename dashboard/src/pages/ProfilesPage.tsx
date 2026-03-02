@@ -40,11 +40,12 @@ export default function ProfilesPage() {
     }
   };
 
-  // Only load on mount if empty — SSE handles updates
+  // Load once on mount if empty — SSE handles updates
   useEffect(() => {
     if (profiles.length === 0) {
       loadProfiles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreate = async () => {

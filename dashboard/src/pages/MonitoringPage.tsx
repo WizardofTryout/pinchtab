@@ -53,18 +53,19 @@ export default function MonitoringPage() {
         tabsByInstance[inst.id] = instTabs;
       }
 
-      addChartDataPoint(dataPoint as any);
+      addChartDataPoint(dataPoint as Parameters<typeof addChartDataPoint>[0]);
       setCurrentTabs(tabsByInstance);
     } catch (e) {
       console.error("Failed to fetch tabs:", e);
     }
   }, [instances, addChartDataPoint, setCurrentTabs]);
 
-  // Initial load
+  // Load once on mount if empty — intentionally omitting deps to avoid refetch loops
   useEffect(() => {
     if (instances.length === 0) {
       loadInstances();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Poll tabs

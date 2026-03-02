@@ -32,10 +32,12 @@ export default function AgentsPage() {
   };
 
   // Agents are loaded via SSE init event — only load if empty
+  // Load once on mount if empty — intentionally omitting deps to avoid refetch loops
   useEffect(() => {
     if (agents.length === 0) {
       loadAgents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredEvents = events.filter((e) => {

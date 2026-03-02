@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [local, setLocal] = useState<Settings>(settings);
   const [saving, setSaving] = useState(false);
 
+  // Load settings on mount
   useEffect(() => {
     const load = async () => {
       try {
@@ -24,6 +25,7 @@ export default function SettingsPage() {
       }
     };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = async () => {
