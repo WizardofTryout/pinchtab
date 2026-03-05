@@ -18,8 +18,8 @@ NC=$'\033[0m'
 # name:emoji:description
 COMMANDS=(
   "check:🧪:Run all checks (Go + Dashboard)"
-  "check go:🧪:Run Go checks only (format, vet, build, test, lint)"
-  "check dashboard:🧪:Run Dashboard checks only (prettier, typecheck, vitest)"
+  "  check go:🧪:Go only (format, vet, build, test, lint)"
+  "  check dashboard:🧪:Dashboard only (prettier, typecheck, vitest)"
   "dev:🚀:Build & run with dashboard"
   "doctor:🩺:Verify & setup dev environment"
   "dashboard:📦:Build React dashboard"
@@ -36,7 +36,13 @@ show_help() {
   echo ""
   for cmd in "${COMMANDS[@]}"; do
     IFS=':' read -r name emoji desc <<< "$cmd"
-    printf "  ${SUCCESS}%s${NC}  ${BOLD}%-20s${NC} ${MUTED}%s${NC}\n" "$emoji" "$name" "$desc"
+    # Subcommands have leading spaces in name
+    if [[ "$name" == " "* ]]; then
+      local trimmed="${name#"${name%%[![:space:]]*}"}"
+      printf "       ${BOLD}%-20s${NC} ${MUTED}%s${NC}\n" "$trimmed" "$desc"
+    else
+      printf "  ${SUCCESS}%s${NC}  ${BOLD}%-20s${NC} ${MUTED}%s${NC}\n" "$emoji" "$name" "$desc"
+    fi
   done
   echo ""
   echo "  ${MUTED}Usage: pdev [command] [sub]${NC}"
@@ -115,8 +121,13 @@ pick_with_select() {
   local i=1
   for cmd in "${COMMANDS[@]}"; do
     IFS=':' read -r name emoji desc <<< "$cmd"
-    printf "  ${MUTED}[%d]${NC} ${SUCCESS}%s${NC}  ${BOLD}%-20s${NC} %s\n" "$i" "$emoji" "$name" "$desc"
-    names+=("$name")
+    local trimmed="${name#"${name%%[![:space:]]*}"}"
+    if [[ "$name" == " "* ]]; then
+      printf "  ${MUTED}[%d]${NC}        ${BOLD}%-20s${NC} %s\n" "$i" "$trimmed" "$desc"
+    else
+      printf "  ${MUTED}[%d]${NC} ${SUCCESS}%s${NC}  ${BOLD}%-20s${NC} %s\n" "$i" "$emoji" "$trimmed" "$desc"
+    fi
+    names+=("$trimmed")
     i=$((i + 1))
   done
 
