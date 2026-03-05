@@ -79,22 +79,73 @@ if command -v gotestsum &>/dev/null; then
   HAS_GOTESTSUM=true
 fi
 
-# Run tests with progress dots instead of verbose output
-# Usage: run_tests <json_file> <label> <go test args...>
-run_tests() {
+# Run unit tests with dots progress
+# Usage: run_unit_tests <json_file> <go test args...>
+run_unit_tests() {
   local json_file="$1"; shift
-  local label="$1"; shift
   local exit_code=0
 
   if $HAS_GOTESTSUM; then
-    # gotestsum with dots format for compact progress, JSON for summary
     gotestsum --format dots --jsonfile "$json_file" -- "$@" 2>&1 || exit_code=$?
   else
-    # Fallback: stream but compact — show only pass/fail lines
     go test "$@" 2>&1 | grep -E '^(ok|FAIL|---) ' || exit_code=${PIPESTATUS[0]}
   fi
 
   echo ""
+  return $exit_code
+}
+
+# Run integration tests with live progress counter
+# Usage: run_integration_tests <json_file> <go test args...>
+run_integration_tests() {
+  local json_file="$1"; shift
+  local exit_code=0
+
+  if $HAS_GOTESTSUM; then
+    # Run gotestsum, capture JSON, stream progress from events
+    gotestsum --format standard-quiet --jsonfile "$json_file" -- "$@" 2>&1 &
+    local pid=$!
+
+    # Wait for JSON file to appear
+    while [ ! -f "$json_file" ] && kill -0 $pid 2>/dev/null; do sleep 0.1; done
+
+    # Tail the JSON file and show progress
+    local count=0 last_test=""
+    tail -f "$json_file" 2>/dev/null | while IFS= read -r line; do
+      # Check if gotestsum is still running
+      kill -0 $pid 2>/dev/null || break
+
+      local action test_name
+      action=$(echo "$line" | jq -r '.Action // empty' 2>/dev/null)
+      test_name=$(echo "$line" | jq -r '.Test // empty' 2>/dev/null)
+
+      if [ -n "$test_name" ]; then
+        case "$action" in
+          run)
+            printf "\r    ${MUTED}▸ %s${NC}%-20s" "$test_name" ""
+            ;;
+          pass)
+            count=$((count + 1))
+            printf "\r    ${SUCCESS}✓${NC} ${MUTED}[%d]${NC} %s%-20s\n" "$count" "$test_name" ""
+            ;;
+          fail)
+            count=$((count + 1))
+            printf "\r    ${ERROR}✗${NC} ${MUTED}[%d]${NC} %s%-20s\n" "$count" "$test_name" ""
+            ;;
+          skip)
+            count=$((count + 1))
+            printf "\r    ${ACCENT}·${NC} ${MUTED}[%d]${NC} %s ${MUTED}(skip)${NC}%-10s\n" "$count" "$test_name" ""
+            ;;
+        esac
+      fi
+    done
+
+    wait $pid 2>/dev/null || exit_code=$?
+    printf "\r%-60s\r" ""  # clear last line
+  else
+    go test "$@" 2>&1 | grep -E '^(ok|FAIL|---) ' || exit_code=${PIPESTATUS[0]}
+  fi
+
   return $exit_code
 }
 
@@ -137,7 +188,7 @@ section "Unit Tests"
 
 UNIT_JSON="$TMPDIR_CHECK/unit-events.json"
 
-if ! run_tests "$UNIT_JSON" "Unit" \
+if ! run_unit_tests "$UNIT_JSON" \
   -count=1 -coverprofile=coverage.out -covermode=atomic ./...; then
   fail "Unit tests"
   test_summary "$UNIT_JSON" "Unit Test Results"
@@ -157,7 +208,7 @@ section "Integration Tests (Core)"
 
 CORE_JSON="$TMPDIR_CHECK/core-events.json"
 
-if ! run_tests "$CORE_JSON" "Core" \
+if ! run_integration_tests "$CORE_JSON" \
   -tags integration -timeout 10m -count=1 \
   -run "$CORE_REGEX" ./tests/integration/; then
   fail "Integration core"
@@ -173,7 +224,7 @@ section "Integration Tests (Rest)"
 
 REST_JSON="$TMPDIR_CHECK/rest-events.json"
 
-if ! run_tests "$REST_JSON" "Rest" \
+if ! run_integration_tests "$REST_JSON" \
   -tags integration -timeout 12m -count=1 \
   -run '^Test' -skip "$CORE_REGEX" ./tests/integration/; then
   fail "Integration rest"
