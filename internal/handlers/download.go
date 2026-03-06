@@ -56,6 +56,10 @@ func validateDownloadURL(rawURL string) error {
 //
 // GET /download?url=<url>[&tabId=<id>][&output=file&path=/tmp/file][&raw=true]
 func (h *Handlers) HandleDownload(w http.ResponseWriter, r *http.Request) {
+	if !h.Config.AllowDownload {
+		web.ErrorCode(w, 403, "download_disabled", "download endpoint is disabled; set PINCHTAB_ALLOW_DOWNLOAD=1 to enable", false, nil)
+		return
+	}
 	dlURL := r.URL.Query().Get("url")
 	if dlURL == "" {
 		web.Error(w, 400, fmt.Errorf("url parameter required"))

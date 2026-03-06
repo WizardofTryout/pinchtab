@@ -9,7 +9,7 @@ import (
 )
 
 func TestHandleScreencast_AuthRejectsNoToken(t *testing.T) {
-	cfg := &config.RuntimeConfig{Token: "secret-token-123"}
+	cfg := &config.RuntimeConfig{Token: "secret-token-123", AllowScreencast: true}
 	h := New(&mockBridge{}, cfg, nil, nil, nil)
 
 	req := httptest.NewRequest("GET", "/screencast", nil)
@@ -23,7 +23,7 @@ func TestHandleScreencast_AuthRejectsNoToken(t *testing.T) {
 }
 
 func TestHandleScreencast_AuthRejectsWrongToken(t *testing.T) {
-	cfg := &config.RuntimeConfig{Token: "secret-token-123"}
+	cfg := &config.RuntimeConfig{Token: "secret-token-123", AllowScreencast: true}
 	h := New(&mockBridge{}, cfg, nil, nil, nil)
 
 	req := httptest.NewRequest("GET", "/screencast?token=wrong-token", nil)
@@ -37,7 +37,7 @@ func TestHandleScreencast_AuthRejectsWrongToken(t *testing.T) {
 }
 
 func TestHandleScreencast_AuthRejectsWrongHeader(t *testing.T) {
-	cfg := &config.RuntimeConfig{Token: "secret-token-123"}
+	cfg := &config.RuntimeConfig{Token: "secret-token-123", AllowScreencast: true}
 	h := New(&mockBridge{}, cfg, nil, nil, nil)
 
 	req := httptest.NewRequest("GET", "/screencast", nil)
@@ -65,5 +65,16 @@ func TestHandleScreencast_NoTokenConfigSkipsAuth(t *testing.T) {
 
 	if w.Code == http.StatusUnauthorized {
 		t.Errorf("should not get 401 when no token is configured, got %d", w.Code)
+	}
+}
+
+func TestHandleScreencast_Disabled(t *testing.T) {
+	cfg := &config.RuntimeConfig{}
+	h := New(&mockBridge{}, cfg, nil, nil, nil)
+	req := httptest.NewRequest("GET", "/screencast", nil)
+	w := httptest.NewRecorder()
+	h.HandleScreencast(w, req)
+	if w.Code != 403 {
+		t.Errorf("expected 403 when screencast disabled, got %d", w.Code)
 	}
 }

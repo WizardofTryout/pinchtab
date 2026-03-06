@@ -19,6 +19,10 @@ type RuntimeConfig struct {
 	CdpURL            string
 	Token             string
 	AllowEvaluate     bool
+	AllowMacro        bool
+	AllowScreencast   bool
+	AllowDownload     bool
+	AllowUpload       bool
 	StateDir          string
 	Headless          bool
 	NoRestore         bool
@@ -222,6 +226,10 @@ type FileConfig struct {
 	CdpURL            string `json:"cdpUrl,omitempty"`
 	Token             string `json:"token,omitempty"`
 	AllowEvaluate     *bool  `json:"allowEvaluate,omitempty"`
+	AllowMacro        *bool  `json:"allowMacro,omitempty"`
+	AllowScreencast   *bool  `json:"allowScreencast,omitempty"`
+	AllowDownload     *bool  `json:"allowDownload,omitempty"`
+	AllowUpload       *bool  `json:"allowUpload,omitempty"`
 	StateDir          string `json:"stateDir"`
 	ProfileDir        string `json:"profileDir"`
 	Headless          *bool  `json:"headless,omitempty"`
@@ -240,6 +248,10 @@ func Load() *RuntimeConfig {
 		CdpURL:            os.Getenv("CDP_URL"),
 		Token:             envMigrate("PINCHTAB_TOKEN", "BRIDGE_TOKEN"),
 		AllowEvaluate:     envBoolOrMigrate("PINCHTAB_ALLOW_EVALUATE", "BRIDGE_ALLOW_EVALUATE", false),
+		AllowMacro:        envBoolOrMigrate("PINCHTAB_ALLOW_MACRO", "BRIDGE_ALLOW_MACRO", false),
+		AllowScreencast:   envBoolOrMigrate("PINCHTAB_ALLOW_SCREENCAST", "BRIDGE_ALLOW_SCREENCAST", false),
+		AllowDownload:     envBoolOrMigrate("PINCHTAB_ALLOW_DOWNLOAD", "BRIDGE_ALLOW_DOWNLOAD", false),
+		AllowUpload:       envBoolOrMigrate("PINCHTAB_ALLOW_UPLOAD", "BRIDGE_ALLOW_UPLOAD", false),
 		StateDir:          envOrMigrate("PINCHTAB_STATE_DIR", "BRIDGE_STATE_DIR", userConfigDir()),
 		Headless:          envBoolOrMigrate("PINCHTAB_HEADLESS", "BRIDGE_HEADLESS", true),
 		NoRestore:         envBoolOrMigrate("PINCHTAB_NO_RESTORE", "BRIDGE_NO_RESTORE", false),
@@ -295,6 +307,18 @@ func Load() *RuntimeConfig {
 	}
 	if fc.AllowEvaluate != nil && !envMigrateIsSet("PINCHTAB_ALLOW_EVALUATE", "BRIDGE_ALLOW_EVALUATE") {
 		cfg.AllowEvaluate = *fc.AllowEvaluate
+	}
+	if fc.AllowMacro != nil && !envMigrateIsSet("PINCHTAB_ALLOW_MACRO", "BRIDGE_ALLOW_MACRO") {
+		cfg.AllowMacro = *fc.AllowMacro
+	}
+	if fc.AllowScreencast != nil && !envMigrateIsSet("PINCHTAB_ALLOW_SCREENCAST", "BRIDGE_ALLOW_SCREENCAST") {
+		cfg.AllowScreencast = *fc.AllowScreencast
+	}
+	if fc.AllowDownload != nil && !envMigrateIsSet("PINCHTAB_ALLOW_DOWNLOAD", "BRIDGE_ALLOW_DOWNLOAD") {
+		cfg.AllowDownload = *fc.AllowDownload
+	}
+	if fc.AllowUpload != nil && !envMigrateIsSet("PINCHTAB_ALLOW_UPLOAD", "BRIDGE_ALLOW_UPLOAD") {
+		cfg.AllowUpload = *fc.AllowUpload
 	}
 	if fc.StateDir != "" && !envMigrateIsSet("PINCHTAB_STATE_DIR", "BRIDGE_STATE_DIR") {
 		cfg.StateDir = fc.StateDir
@@ -389,6 +413,10 @@ func HandleConfigCommand(cfg *RuntimeConfig) {
 		fmt.Printf("  CDP URL:    %s\n", cfg.CdpURL)
 		fmt.Printf("  Token:      %s\n", MaskToken(cfg.Token))
 		fmt.Printf("  Eval JS:    %v\n", cfg.AllowEvaluate)
+		fmt.Printf("  Macro:      %v\n", cfg.AllowMacro)
+		fmt.Printf("  Screencast: %v\n", cfg.AllowScreencast)
+		fmt.Printf("  Download:   %v\n", cfg.AllowDownload)
+		fmt.Printf("  Upload:     %v\n", cfg.AllowUpload)
 		fmt.Printf("  State Dir:  %s\n", cfg.StateDir)
 		fmt.Printf("  Profile:    %s\n", cfg.ProfileDir)
 		fmt.Printf("  Headless:   %v\n", cfg.Headless)

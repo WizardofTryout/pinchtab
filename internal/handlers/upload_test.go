@@ -11,7 +11,7 @@ import (
 )
 
 func TestHandleUpload_BadJSON(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/upload", bytes.NewReader([]byte("not json")))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -22,7 +22,7 @@ func TestHandleUpload_BadJSON(t *testing.T) {
 }
 
 func TestHandleUpload_EmptyPaths(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	body := `{"selector": "input[type=file]"}`
 	req := httptest.NewRequest("POST", "/upload", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -34,7 +34,7 @@ func TestHandleUpload_EmptyPaths(t *testing.T) {
 }
 
 func TestHandleUpload_NonexistentPath(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	body := `{"selector": "input[type=file]", "paths": ["/tmp/nonexistent-file-12345.jpg"]}`
 	req := httptest.NewRequest("POST", "/upload", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -47,7 +47,7 @@ func TestHandleUpload_NonexistentPath(t *testing.T) {
 
 func TestHandleUpload_PathTraversal(t *testing.T) {
 	tmpDir := t.TempDir()
-	h := New(&mockBridge{}, &config.RuntimeConfig{StateDir: tmpDir}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true, StateDir: tmpDir}, nil, nil, nil)
 
 	tests := []struct {
 		name string
@@ -73,7 +73,7 @@ func TestHandleUpload_PathTraversal(t *testing.T) {
 }
 
 func TestHandleTabUpload_MissingTabID(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/tabs//upload", bytes.NewReader([]byte(`{"selector":"input[type=file]"}`)))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestHandleTabUpload_MissingTabID(t *testing.T) {
 }
 
 func TestHandleTabUpload_NoTab(t *testing.T) {
-	h := New(&mockBridge{failTab: true}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{failTab: true}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/tabs/tab_abc/upload", bytes.NewReader([]byte(`{"files":["aGVsbG8="]}`)))
 	req.SetPathValue("id", "tab_abc")
 	req.Header.Set("Content-Type", "application/json")
@@ -96,7 +96,7 @@ func TestHandleTabUpload_NoTab(t *testing.T) {
 }
 
 func TestHandleUpload_BodyTooLarge(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowUpload: true}, nil, nil, nil)
 	// Create a body larger than 10MB
 	bigBody := make([]byte, 11<<20) // 11MB
 	req := httptest.NewRequest("POST", "/upload", bytes.NewReader(bigBody))
@@ -188,5 +188,15 @@ func TestSniffExt(t *testing.T) {
 				t.Errorf("sniffExt() = %q, want %q", got, tt.ext)
 			}
 		})
+	}
+}
+
+func TestHandleUpload_Disabled(t *testing.T) {
+	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	req := httptest.NewRequest("POST", "/upload", bytes.NewReader([]byte(`{"paths":["/tmp/test.png"]}`)))
+	w := httptest.NewRecorder()
+	h.HandleUpload(w, req)
+	if w.Code != 403 {
+		t.Errorf("expected 403 when upload disabled, got %d", w.Code)
 	}
 }

@@ -85,6 +85,10 @@ jobs:
           PINCHTAB_TEST_PORT: "19867"
           PINCHTAB_TEST_RETRY: "true"
           PINCHTAB_ALLOW_EVALUATE: "true"
+          PINCHTAB_ALLOW_MACRO: "true"
+          PINCHTAB_ALLOW_DOWNLOAD: "true"
+          PINCHTAB_ALLOW_UPLOAD: "true"
+          PINCHTAB_ALLOW_SCREENCAST: "true"
 
       - name: 📋 Add summary
         if: always()
@@ -149,6 +153,10 @@ jobs:
           PINCHTAB_TEST_PORT: "19868"
           PINCHTAB_TEST_RETRY: "true"
           PINCHTAB_ALLOW_EVALUATE: "true"
+          PINCHTAB_ALLOW_MACRO: "true"
+          PINCHTAB_ALLOW_DOWNLOAD: "true"
+          PINCHTAB_ALLOW_UPLOAD: "true"
+          PINCHTAB_ALLOW_SCREENCAST: "true"
 
       - name: 📋 Add summary
         if: always()

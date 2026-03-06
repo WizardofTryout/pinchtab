@@ -36,6 +36,10 @@ type uploadRequest struct {
 // Either "files" (base64 data) or "paths" (local file paths) must be provided.
 // Both can be combined. Files are written to a temp dir and passed to CDP.
 func (h *Handlers) HandleUpload(w http.ResponseWriter, r *http.Request) {
+	if !h.Config.AllowUpload {
+		web.ErrorCode(w, 403, "upload_disabled", "upload endpoint is disabled; set PINCHTAB_ALLOW_UPLOAD=1 to enable", false, nil)
+		return
+	}
 	tabID := r.URL.Query().Get("tabId")
 
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB limit

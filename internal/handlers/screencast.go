@@ -19,6 +19,10 @@ import (
 // HandleScreencast upgrades to WebSocket and streams screencast frames for a tab.
 // Query params: tabId (required), quality (1-100, default 40), maxWidth (default 800), fps (1-30, default 5)
 func (h *Handlers) HandleScreencast(w http.ResponseWriter, r *http.Request) {
+	if !h.Config.AllowScreencast {
+		web.ErrorCode(w, 403, "screencast_disabled", "screencast endpoint is disabled; set PINCHTAB_ALLOW_SCREENCAST=1 to enable", false, nil)
+		return
+	}
 	tabID := r.URL.Query().Get("tabId")
 	if tabID == "" {
 		targets, err := h.Bridge.ListTargets()
@@ -143,6 +147,10 @@ func (h *Handlers) HandleScreencast(w http.ResponseWriter, r *http.Request) {
 
 // HandleScreencastAll returns info for building a multi-tab screencast view.
 func (h *Handlers) HandleScreencastAll(w http.ResponseWriter, r *http.Request) {
+	if !h.Config.AllowScreencast {
+		web.ErrorCode(w, 403, "screencast_disabled", "screencast endpoint is disabled; set PINCHTAB_ALLOW_SCREENCAST=1 to enable", false, nil)
+		return
+	}
 	type tabInfo struct {
 		ID    string `json:"id"`
 		URL   string `json:"url,omitempty"`

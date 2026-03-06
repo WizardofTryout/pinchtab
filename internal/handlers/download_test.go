@@ -9,7 +9,7 @@ import (
 )
 
 func TestHandleDownload_MissingURL(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowDownload: true}, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/download", nil)
 	w := httptest.NewRecorder()
 	h.HandleDownload(w, req)
@@ -19,7 +19,7 @@ func TestHandleDownload_MissingURL(t *testing.T) {
 }
 
 func TestHandleDownload_EmptyURL(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowDownload: true}, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/download?url=", nil)
 	w := httptest.NewRecorder()
 	h.HandleDownload(w, req)
@@ -56,7 +56,7 @@ func TestValidateDownloadURL(t *testing.T) {
 }
 
 func TestHandleDownload_SSRFBlocked(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowDownload: true}, nil, nil, nil)
 	urls := []string{
 		"file:///etc/passwd",
 		"http://localhost:8080",
@@ -73,7 +73,7 @@ func TestHandleDownload_SSRFBlocked(t *testing.T) {
 }
 
 func TestHandleTabDownload_MissingTabID(t *testing.T) {
-	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{}, &config.RuntimeConfig{AllowDownload: true}, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/tabs//download?url=https://example.com", nil)
 	w := httptest.NewRecorder()
 	h.HandleTabDownload(w, req)
@@ -83,12 +83,22 @@ func TestHandleTabDownload_MissingTabID(t *testing.T) {
 }
 
 func TestHandleTabDownload_NoTab(t *testing.T) {
-	h := New(&mockBridge{failTab: true}, &config.RuntimeConfig{}, nil, nil, nil)
+	h := New(&mockBridge{failTab: true}, &config.RuntimeConfig{AllowDownload: true}, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/tabs/tab_abc/download?url=https://example.com", nil)
 	req.SetPathValue("id", "tab_abc")
 	w := httptest.NewRecorder()
 	h.HandleTabDownload(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleDownload_Disabled(t *testing.T) {
+	h := New(&mockBridge{}, &config.RuntimeConfig{}, nil, nil, nil)
+	req := httptest.NewRequest("GET", "/download?url=https://example.com/file.txt", nil)
+	w := httptest.NewRecorder()
+	h.HandleDownload(w, req)
+	if w.Code != 403 {
+		t.Errorf("expected 403 when download disabled, got %d", w.Code)
 	}
 }
