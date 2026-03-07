@@ -355,6 +355,53 @@ func (o *Orchestrator) writeChildConfig(port, profilePath, instanceStateDir stri
 	return configPath, nil
 }
 
+// Attach connects to an externally managed Chrome instance via CDP URL.
+// Unlike Launch, this does not start a Chrome process - it only registers
+// the external instance for tracking and proxying.
+func (o *Orchestrator) Attach(name, cdpURL string) (*bridge.Instance, error) {
+	o.mu.Lock()
+
+	// Check for duplicate name
+	for _, inst := range o.instances {
+		if inst.ProfileName == name && instanceIsActive(inst) {
+			o.mu.Unlock()
+			return nil, fmt.Errorf("instance with name %q already exists", name)
+		}
+	}
+	o.mu.Unlock()
+
+	// Generate IDs (use name as pseudo-profile)
+	profileID := o.idMgr.ProfileID(name)
+	instanceID := o.idMgr.InstanceID(profileID, name)
+
+	inst := &InstanceInternal{
+		Instance: bridge.Instance{
+			ID:          instanceID,
+			ProfileID:   profileID,
+			ProfileName: name,
+			Status:      "running",
+			StartTime:   time.Now(),
+			Attached:    true,
+			CdpURL:      cdpURL,
+		},
+		URL: cdpURL,
+	}
+
+	o.mu.Lock()
+	o.instances[instanceID] = inst
+	o.mu.Unlock()
+
+	slog.Info("attached to external Chrome", "id", instanceID, "name", name, "cdpUrl", cdpURL)
+
+	// Emit event
+	o.emitEvent("instance.attached", &inst.Instance)
+
+	// Sync to instance manager if available
+	o.syncInstanceToManager(&inst.Instance)
+
+	return &inst.Instance, nil
+}
+
 func (o *Orchestrator) Stop(id string) error {
 	o.mu.Lock()
 	inst, ok := o.instances[id]

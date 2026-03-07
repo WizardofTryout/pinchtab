@@ -180,3 +180,51 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestOrchestrator_Attach(t *testing.T) {
+	runner := &mockRunner{portAvail: true}
+	o := NewOrchestratorWithRunner(t.TempDir(), runner)
+
+	cdpURL := "ws://localhost:9222/devtools/browser/abc123"
+	inst, err := o.Attach("my-external-chrome", cdpURL)
+	if err != nil {
+		t.Fatalf("Attach failed: %v", err)
+	}
+
+	if !inst.Attached {
+		t.Error("expected Attached to be true")
+	}
+	if inst.CdpURL != cdpURL {
+		t.Errorf("expected CdpURL %q, got %q", cdpURL, inst.CdpURL)
+	}
+	if inst.Status != "running" {
+		t.Errorf("expected status running, got %s", inst.Status)
+	}
+	if inst.ProfileName != "my-external-chrome" {
+		t.Errorf("expected ProfileName %q, got %q", "my-external-chrome", inst.ProfileName)
+	}
+
+	// Check it appears in list
+	list := o.List()
+	if len(list) != 1 {
+		t.Fatalf("expected 1 instance in list, got %d", len(list))
+	}
+	if !list[0].Attached {
+		t.Error("instance in list should have Attached=true")
+	}
+}
+
+func TestOrchestrator_Attach_DuplicateName(t *testing.T) {
+	runner := &mockRunner{portAvail: true}
+	o := NewOrchestratorWithRunner(t.TempDir(), runner)
+
+	_, err := o.Attach("chrome1", "ws://localhost:9222/a")
+	if err != nil {
+		t.Fatalf("First attach failed: %v", err)
+	}
+
+	_, err = o.Attach("chrome1", "ws://localhost:9222/b")
+	if err == nil {
+		t.Error("expected error when attaching duplicate name")
+	}
+}

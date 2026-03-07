@@ -127,6 +127,8 @@ type Instance struct {
 	Status      string    `json:"status"`          // Status: starting/running/stopping/stopped/error
 	StartTime   time.Time `json:"startTime"`       // When instance was created
 	Error       string    `json:"error,omitempty"` // Error message if status=error
+	Attached    bool      `json:"attached"`        // True if attached to external Chrome (not launched)
+	CdpURL      string    `json:"cdpUrl,omitempty"` // CDP WebSocket URL (for attached instances)
 }
 
 type InstanceTab struct {

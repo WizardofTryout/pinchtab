@@ -37,6 +37,8 @@ type Instance struct {
 	Status      string    `json:"status"` // starting/running/stopping/stopped/error
 	StartTime   time.Time `json:"startTime"`
 	Error       string    `json:"error,omitempty"`
+	Attached    bool      `json:"attached"`          // True if attached to external Chrome
+	CdpURL      string    `json:"cdpUrl,omitempty"` // CDP WebSocket URL (for attached instances)
 }
 
 // Agent represents a connected AI agent.

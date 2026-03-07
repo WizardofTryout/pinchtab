@@ -182,3 +182,83 @@ func (o *Orchestrator) handleStartInstance(w http.ResponseWriter, r *http.Reques
 
 	web.JSON(w, 201, inst)
 }
+
+func (o *Orchestrator) handleAttachInstance(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CdpURL string `json:"cdpUrl"`
+		Name   string `json:"name,omitempty"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.Error(w, 400, fmt.Errorf("invalid JSON"))
+		return
+	}
+
+	if req.CdpURL == "" {
+		web.Error(w, 400, fmt.Errorf("cdpUrl is required"))
+		return
+	}
+
+	// Validate attach is enabled and URL is allowed
+	if err := o.validateAttachURL(req.CdpURL); err != nil {
+		web.Error(w, 403, err)
+		return
+	}
+
+	// Generate name if not provided
+	name := req.Name
+	if name == "" {
+		name = fmt.Sprintf("attached-%d", time.Now().UnixNano())
+	}
+
+	inst, err := o.Attach(name, req.CdpURL)
+	if err != nil {
+		web.Error(w, 500, err)
+		return
+	}
+
+	web.JSON(w, 201, inst)
+}
+
+// validateAttachURL checks if attach is enabled and the CDP URL is allowed.
+func (o *Orchestrator) validateAttachURL(cdpURL string) error {
+	if o.runtimeCfg == nil {
+		return fmt.Errorf("attach not configured")
+	}
+
+	if !o.runtimeCfg.AttachEnabled {
+		return fmt.Errorf("attach is disabled")
+	}
+
+	parsed, err := url.Parse(cdpURL)
+	if err != nil {
+		return fmt.Errorf("invalid cdpUrl: %w", err)
+	}
+
+	// Validate scheme
+	schemeAllowed := false
+	for _, allowed := range o.runtimeCfg.AttachAllowSchemes {
+		if parsed.Scheme == allowed {
+			schemeAllowed = true
+			break
+		}
+	}
+	if !schemeAllowed {
+		return fmt.Errorf("scheme %q not allowed (allowed: %v)", parsed.Scheme, o.runtimeCfg.AttachAllowSchemes)
+	}
+
+	// Validate host
+	host := parsed.Hostname()
+	hostAllowed := false
+	for _, allowed := range o.runtimeCfg.AttachAllowHosts {
+		if host == allowed {
+			hostAllowed = true
+			break
+		}
+	}
+	if !hostAllowed {
+		return fmt.Errorf("host %q not allowed (allowed: %v)", host, o.runtimeCfg.AttachAllowHosts)
+	}
+
+	return nil
+}
