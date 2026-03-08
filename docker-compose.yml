@@ -12,6 +12,8 @@ services:
       - PINCHTAB_HEADLESS=true
       - PINCHTAB_TOKEN=${PINCHTAB_TOKEN:-}
       - PINCHTAB_STATE_DIR=/data
+      - PINCHTAB_CONFIG=/data/config.json
+      - PINCHTAB_PROFILES_BASE_DIR=/data/profiles
       - PINCHTAB_PROFILE_DIR=/data/chrome-profile
     restart: unless-stopped
     # Shared memory is critical for Chrome stability

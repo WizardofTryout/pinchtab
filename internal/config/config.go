@@ -452,7 +452,7 @@ func Load() *RuntimeConfig {
 		Headless:          true,
 		NoRestore:         false,
 		ProfileDir:        "",
-		ProfilesBaseDir:   "",
+		ProfilesBaseDir:   os.Getenv("PINCHTAB_PROFILES_BASE_DIR"),
 		DefaultProfile:    "default",
 		ChromeVersion:     "144.0.7559.133",
 		Timezone:          "",
