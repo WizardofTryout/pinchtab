@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAppStore } from "../stores/useAppStore";
 import { Button, Card } from "../components/atoms";
 import * as api from "../services/api";
@@ -23,47 +23,47 @@ const sections: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    description: "Local monitoring and screencast preferences.",
-  },
-  {
-    id: "defaults",
-    label: "Instance Defaults",
-    description: "How new managed browser instances launch.",
-  },
-  {
-    id: "orchestration",
-    label: "Orchestration",
-    description: "Routing strategy, port range, and allocation policy.",
-  },
-  {
-    id: "security",
-    label: "Security",
-    description: "Sensitive endpoint gates and access controls.",
-  },
-  {
-    id: "profiles",
-    label: "Profiles",
-    description: "Shared profile storage and default profile behavior.",
-  },
-  {
-    id: "network",
-    label: "Network & Attach",
-    description: "Server binding, auth, and attach policy.",
-  },
-  {
-    id: "browser",
-    label: "Browser Runtime",
-    description: "Chrome binary, version, flags, and extensions.",
-  },
-  {
-    id: "timeouts",
-    label: "Timeouts",
-    description: "Action, navigation, shutdown, and wait timing.",
-  },
-];
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      description: "Local monitoring and screencast preferences.",
+    },
+    {
+      id: "defaults",
+      label: "Instance Defaults",
+      description: "How new managed browser instances launch.",
+    },
+    {
+      id: "orchestration",
+      label: "Orchestration",
+      description: "Routing strategy, port range, and allocation policy.",
+    },
+    {
+      id: "security",
+      label: "Security",
+      description: "Sensitive endpoint gates and access controls.",
+    },
+    {
+      id: "profiles",
+      label: "Profiles",
+      description: "Shared profile storage and default profile behavior.",
+    },
+    {
+      id: "network",
+      label: "Network & Attach",
+      description: "Server binding, auth, and attach policy.",
+    },
+    {
+      id: "browser",
+      label: "Browser Runtime",
+      description: "Chrome binary, version, flags, and extensions.",
+    },
+    {
+      id: "timeouts",
+      label: "Timeouts",
+      description: "Action, navigation, shutdown, and wait timing.",
+    },
+  ];
 
 const fieldClass =
   "w-full rounded-sm border border-border-subtle bg-[rgb(var(--brand-surface-code-rgb)/0.72)] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted transition-all duration-150 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
@@ -170,6 +170,8 @@ export default function SettingsPage() {
     load();
   }, [setServerInfo]);
 
+  const [savedMsg, setSavedMsg] = useState("");
+
   const hasDashboardChanges = useMemo(
     () => JSON.stringify(localSettings) !== JSON.stringify(settings),
     [localSettings, settings],
@@ -204,9 +206,9 @@ export default function SettingsPage() {
     setBackendConfig((current) =>
       current
         ? {
-            ...current,
-            [section]: { ...current[section], ...patch },
-          }
+          ...current,
+          [section]: { ...current[section], ...patch },
+        }
         : current,
     );
   };
@@ -243,6 +245,9 @@ export default function SettingsPage() {
         );
       }
 
+      setSavedMsg("✓ Saved!");
+      setTimeout(() => setSavedMsg(""), 2000);
+
       const health = await api.fetchHealth().catch(() => null);
       if (health) {
         setServerInfo(health);
@@ -270,6 +275,14 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {savedMsg && (
+              <span
+                className="text-sm font-medium text-green-500 transition-opacity"
+                aria-live="polite"
+              >
+                {savedMsg}
+              </span>
+            )}
             {restartRequired && (
               <div className="rounded-sm border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-warning">
                 Restart required
@@ -321,11 +334,10 @@ export default function SettingsPage() {
                 <button
                   key={section.id}
                   type="button"
-                  className={`rounded-sm border px-3 py-2.5 text-left transition-all ${
-                    activeSection === section.id
-                      ? "border-primary/30 bg-primary/10 text-text-primary"
-                      : "border-transparent text-text-secondary hover:border-border-subtle hover:bg-bg-elevated hover:text-text-primary"
-                  }`}
+                  className={`rounded-sm border px-3 py-2.5 text-left transition-all ${activeSection === section.id
+                    ? "border-primary/30 bg-primary/10 text-text-primary"
+                    : "border-transparent text-text-secondary hover:border-border-subtle hover:bg-bg-elevated hover:text-text-primary"
+                    }`}
                   onClick={() => setActiveSection(section.id)}
                 >
                   <div className="text-sm font-medium">{section.label}</div>
@@ -620,7 +632,7 @@ export default function SettingsPage() {
                           type="checkbox"
                           checked={
                             backendConfig.instanceDefaults[
-                              key as keyof BackendConfig["instanceDefaults"]
+                            key as keyof BackendConfig["instanceDefaults"]
                             ] as boolean
                           }
                           onChange={(e) =>
@@ -723,11 +735,10 @@ export default function SettingsPage() {
                   description="These feature gates affect what sensitive capabilities PinchTab exposes. They are applied to future launched instances and live middleware where supported."
                 >
                   <div
-                    className={`rounded-sm px-4 py-3 text-sm leading-6 ${
-                      sensitiveEndpointsEnabled
-                        ? "border border-destructive/35 bg-destructive/10 text-destructive"
-                        : "border border-warning/25 bg-warning/10 text-warning"
-                    }`}
+                    className={`rounded-sm px-4 py-3 text-sm leading-6 ${sensitiveEndpointsEnabled
+                      ? "border border-destructive/35 bg-destructive/10 text-destructive"
+                      : "border border-warning/25 bg-warning/10 text-warning"
+                      }`}
                   >
                     {sensitiveEndpointsEnabled
                       ? "One or more sensitive endpoint families are enabled. Features like script execution, downloads, uploads, and live capture can expose high-risk capabilities. Only enable them in trusted environments. You are responsible for securing network access, authentication, and downstream use."
@@ -750,7 +761,7 @@ export default function SettingsPage() {
                           type="checkbox"
                           checked={
                             backendConfig.security[
-                              key as keyof BackendConfig["security"]
+                            key as keyof BackendConfig["security"]
                             ]
                           }
                           onChange={(e) =>
@@ -1027,7 +1038,7 @@ export default function SettingsPage() {
                         min={0}
                         value={
                           backendConfig.timeouts[
-                            key as keyof BackendConfig["timeouts"]
+                          key as keyof BackendConfig["timeouts"]
                           ]
                         }
                         onChange={(e) =>

@@ -89,10 +89,9 @@ export default function ProfileDetailsModal({
   if (!profile) return null;
 
   const tabClasses = (id: TabId) =>
-    `flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${
-      activeTab === id
-        ? "border-primary text-text-primary"
-        : "border-transparent text-text-muted hover:text-text-secondary"
+    `flex-1 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === id
+      ? "border-primary text-text-primary"
+      : "border-transparent text-text-muted hover:text-text-secondary"
     }`;
 
   return (
@@ -244,6 +243,7 @@ export default function ProfileDetailsModal({
                     {tabs.map((tab) => (
                       <ScreencastTile
                         key={tab.id}
+                        instanceId={instance.id}
                         instancePort={instance.port}
                         tabId={tab.id}
                         label={tab.title?.slice(0, 20) || tab.id.slice(0, 8)}

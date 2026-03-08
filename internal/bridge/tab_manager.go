@@ -132,7 +132,9 @@ func (tm *TabManager) TabContext(tabID string) (context.Context, string, error) 
 		if err == nil {
 			for _, t := range targets {
 				raw := string(t.TargetID)
-				if tm.idMgr.TabIDFromCDPTarget(raw) == tabID {
+				// Check if the input is a raw CDP ID or its hashed version
+				if raw == tabID || tm.idMgr.TabIDFromCDPTarget(raw) == tabID {
+					tabID = tm.idMgr.TabIDFromCDPTarget(raw) // Normalize to hash ID
 					// Initialize context and register it
 					ctx, cancel := chromedp.NewContext(tm.browserCtx, chromedp.WithTargetID(target.ID(raw)))
 					if tm.onTabSetup != nil {

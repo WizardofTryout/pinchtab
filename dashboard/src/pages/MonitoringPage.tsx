@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/useAppStore";
 import { EmptyState, Button, ErrorBoundary } from "../components/atoms";
-import { TabsChart, InstanceListItem, TabItem } from "../components/molecules";
+import { TabsChart, InstanceListItem, TabItem, ScreencastTile } from "../components/molecules";
 import * as api from "../services/api";
 
 export default function MonitoringPage() {
@@ -137,10 +137,24 @@ export default function MonitoringPage() {
                         No tabs open
                       </div>
                     ) : (
-                      <div className="space-y-1">
-                        {selectedTabs.map((tab) => (
-                          <TabItem key={tab.id} tab={tab} />
-                        ))}
+                      <div className="space-y-4">
+                        <div className="grid gap-3 xl:grid-cols-2">
+                          {selectedTabs.map((tab) => (
+                            <ScreencastTile
+                              key={tab.id}
+                              instancePort={String(selectedInstance.port)}
+                              instanceId={String(selectedInstance.id)}
+                              tabId={String(tab.id)}
+                              label={tab.title?.slice(0, 20) || String(tab.id).slice(0, 8)}
+                              url={tab.url}
+                            />
+                          ))}
+                        </div>
+                        <div className="space-y-1">
+                          {selectedTabs.map((tab) => (
+                            <TabItem key={tab.id} tab={tab} />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

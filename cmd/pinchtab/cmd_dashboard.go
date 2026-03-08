@@ -152,8 +152,11 @@ func runDashboard(cfg *config.RuntimeConfig) {
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
+		// WriteTimeout must be 0 (disabled) so SSE connections at /api/events
+		// are not forcefully severed after a fixed duration.
+		// Individual handlers enforce their own timeouts where needed.
+		WriteTimeout: 0,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Start strategy lifecycle if active. For strategies like simple-autorestart,

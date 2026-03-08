@@ -8,7 +8,12 @@ import {
 } from "react-router-dom";
 import { useAppStore } from "./stores/useAppStore";
 import { NavBar } from "./components/molecules";
-import { MonitoringPage, ProfilesPage, SettingsPage } from "./pages";
+import {
+  LiveMonitorPage,
+  MonitoringPage,
+  ProfilesPage,
+  SettingsPage,
+} from "./pages";
 import * as api from "./services/api";
 
 function AppContent() {
@@ -87,7 +92,8 @@ function AppContent() {
       <NavBar />
       <main className="dashboard-grid flex-1 overflow-hidden">
         <Routes>
-          <Route path="/" element={<Navigate to="/monitoring" replace />} />
+          <Route path="/" element={<Navigate to="/monitor" replace />} />
+          <Route path="/monitor" element={<LiveMonitorPage />} />
           <Route path="/monitoring" element={<MonitoringPage />} />
           <Route path="/profiles" element={<ProfilesPage />} />
           <Route

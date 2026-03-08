@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -91,45 +92,28 @@ func (o *Orchestrator) proxyToInstance(w http.ResponseWriter, r *http.Request) {
 	o.proxyToURL(w, r, targetURL)
 }
 
-// proxyToURL proxies an HTTP request to the given target URL.
+// proxyToURL proxies an HTTP request to the given target URL using ReverseProxy.
 func (o *Orchestrator) proxyToURL(w http.ResponseWriter, r *http.Request, targetURL *url.URL) {
 	if targetURL.Hostname() != "localhost" {
 		web.Error(w, 400, fmt.Errorf("invalid proxy target: only localhost allowed"))
 		return
 	}
 
-	proxyReq, err := http.NewRequest(r.Method, targetURL.String(), r.Body)
-	if err != nil {
-		web.Error(w, 500, fmt.Errorf("failed to create proxy request: %w", err))
-		return
+	proxy := httputil.NewSingleHostReverseProxy(&url.URL{
+		Scheme: targetURL.Scheme,
+		Host:   targetURL.Host,
+	})
+
+	// Override Director to append the path and query properly
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.URL.Path = targetURL.Path
+		req.URL.RawQuery = targetURL.RawQuery
 	}
 
-	for key, values := range r.Header {
-		switch key {
-		case "Host", "Connection", "Keep-Alive", "Proxy-Authenticate",
-			"Proxy-Authorization", "Te", "Trailers", "Transfer-Encoding", "Upgrade":
-		default:
-			for _, value := range values {
-				proxyReq.Header.Add(key, value)
-			}
-		}
-	}
-
-	resp, err := o.client.Do(proxyReq)
-	if err != nil {
-		web.Error(w, 502, fmt.Errorf("failed to proxy to instance: %w", err))
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	for key, values := range resp.Header {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-
-	w.WriteHeader(resp.StatusCode)
-	_, _ = w.Write(readResponseBody(resp))
+	// Serve the HTTP request using the proxy. Support for WebSockets is automatic.
+	proxy.ServeHTTP(w, r)
 }
 
 // findRunningInstanceByTabID finds the instance that owns the given tab.
