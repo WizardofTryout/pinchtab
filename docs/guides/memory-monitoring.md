@@ -1,72 +1,42 @@
-# Memory Monitoring Guide
+# Memory Monitoring
 
-Pinchtab monitors Chrome's memory usage at the OS level, providing accurate real-world memory consumption for each browser instance.
+PinchTab exposes memory information for the Chrome processes it launches. The current implementation measures browser memory at the process level and reports browser-wide aggregates for each instance.
 
-![Memory Monitoring Dashboard](images/memory-monitoring-dashboard.jpg)
+## What PinchTab Measures
 
-## Enabling Memory Metrics
+PinchTab walks the Chrome process tree for a running instance:
 
-Memory monitoring is **off by default** to minimize overhead.
+1. find the main browser PID
+2. enumerate child processes
+3. sum RSS memory across the browser and its children
+4. count renderer processes
 
-To enable:
+This gives you real OS-level memory usage for that instance's Chrome process tree.
 
-1. Open the dashboard at `http://localhost:<port>/dashboard`
-2. Go to **Settings** → **📈 Monitoring**
-3. Toggle **Tab Memory Metrics** on (marked as experimental)
-4. Click **Apply Settings**
+## Memory Fields
 
-## How Memory is Calculated
+| Field | Meaning |
+| --- | --- |
+| `memoryMB` | Real RSS memory across the browser process tree |
+| `jsHeapUsedMB` | Estimated value derived from `memoryMB` |
+| `jsHeapTotalMB` | Estimated value derived from `memoryMB` |
+| `renderers` | Number of renderer processes in the browser process tree |
+| `documents`, `frames`, `nodes`, `listeners` | Legacy compatibility fields; currently not populated with live DOM counts |
 
-Pinchtab uses a **process tree approach** to measure memory:
+Important limitation:
 
-1. **Identify the browser process** — Gets the main Chrome PID from chromedp
-2. **Walk the process tree** — Finds all child processes (renderers, GPU, utilities)
-3. **Sum RSS memory** — Adds up Resident Set Size across all Chrome processes
-4. **Filter renderers** — Counts processes with `--type=renderer` for tab count
+- `jsHeapUsedMB` and `jsHeapTotalMB` are estimates, not true per-tab DevTools heap measurements
+- `GET /tabs/{id}/metrics` returns the owning browser instance's aggregate memory, not isolated per-tab memory
 
-This approach ensures memory is **isolated per instance** — you only see memory for that specific Chrome profile, not other Chrome windows on your system.
+## Instance Metrics
 
-### Memory Fields
+For a single running browser:
 
-| Field | Description |
-|-------|-------------|
-| `memoryMB` | Real OS-level memory (RSS) across all Chrome processes |
-| `jsHeapUsedMB` | Estimated JS heap (~40% of memoryMB) |
-| `jsHeapTotalMB` | Estimated total heap (~50% of memoryMB) |
-| `renderers` | Number of renderer processes (≈ tabs) |
-
-> **Note**: JS heap values are estimates based on typical Chrome memory distribution. For exact JS heap metrics, use Chrome DevTools directly.
-
-## API Endpoints
-
-### Per-Tab Metrics
-
-```
-GET /tabs/{tabId}/metrics
+```bash
+curl http://localhost:9867/metrics
 ```
 
-Returns memory metrics (aggregated, since we can't reliably map tabs to PIDs):
-
-```json
-{
-  "memoryMB": 850.5,
-  "jsHeapUsedMB": 340.2,
-  "jsHeapTotalMB": 425.25,
-  "renderers": 11,
-  "documents": 0,
-  "frames": 0,
-  "nodes": 0,
-  "listeners": 0
-}
-```
-
-### Instance Metrics
-
-```
-GET /metrics
-```
-
-Returns server metrics and browser memory:
+Example shape:
 
 ```json
 {
@@ -84,59 +54,77 @@ Returns server metrics and browser memory:
 }
 ```
 
-### All Instances (Orchestrator)
+## Per-Tab Metrics
 
-```
-GET /instances/metrics
+```bash
+curl http://localhost:9867/tabs/<tabId>/metrics
 ```
 
-Returns memory metrics for all running instances:
+Example shape:
 
 ```json
-[
-  {
-    "instanceId": "inst_abc123",
-    "profileName": "MyProfile",
-    "jsHeapUsedMB": 340.2,
-    "jsHeapTotalMB": 425.25,
-    "documents": 0,
-    "frames": 0,
-    "nodes": 0,
-    "listeners": 0
-  }
-]
+{
+  "memoryMB": 850.5,
+  "jsHeapUsedMB": 340.2,
+  "jsHeapTotalMB": 425.25,
+  "renderers": 11,
+  "documents": 0,
+  "frames": 0,
+  "nodes": 0,
+  "listeners": 0
+}
 ```
 
-## Dashboard Visualization
+Treat this as “memory for the browser instance that owns this tab”, not “memory for this tab alone”.
 
-When enabled, the Monitoring page shows:
+## All Running Instances
 
-- **Chart**: Solid lines for tab counts (left axis), dashed lines for memory in MB (right axis)
-- **Instance List**: Shows memory alongside tab count (e.g., `:9869 · 11 tabs · 1382MB`)
-- **Real-time updates**: Data polled every 30 seconds, chart retains ~30 minutes of history
+In orchestrator mode:
 
-## Performance Considerations
+```bash
+curl http://localhost:9867/instances/metrics
+```
 
-- Memory metrics use [gopsutil](https://github.com/shirou/gopsutil) for OS-level process info
-- Minimal overhead: just reads `/proc` (Linux) or uses sysctl (macOS)
-- No CDP calls required — works reliably even with many tabs
-- 5-second grace period for new instances to stabilize before polling
+This returns one metrics object per running instance, which is the best API for comparing memory across a fleet.
+
+## Dashboard Monitoring
+
+The dashboard consumes monitoring snapshots from:
+
+```bash
+curl http://localhost:9867/api/events?memory=1
+```
+
+That stream includes:
+
+- instance list
+- tab list
+- per-instance metrics when `memory=1`
+- server metrics for the PinchTab process itself
+
+The current SSE monitoring loop updates on a short interval, which is suitable for live dashboard views.
 
 ## Troubleshooting
 
-**Memory shows 0**
+### Memory Shows `0`
 
-- Chrome may not have started yet (check instance status)
-- Browser context not initialized
+Likely causes:
 
-**Memory seems too high**
+- Chrome has not started yet
+- the instance is stopped
+- the browser context is not initialized
 
-- Chrome is known to use significant memory
-- Each tab runs in a separate renderer process
-- Extensions and DevTools add to memory usage
+### Memory Looks Higher Than Expected
 
-**Memory doesn't match Activity Monitor/Task Manager**
+Remember that `memoryMB` includes:
 
-- Pinchtab shows RSS (Resident Set Size) for Chrome processes
-- System tools may show different metrics (virtual memory, shared memory)
-- Other Chrome windows are excluded — we only count this instance's process tree
+- the browser process
+- renderer processes
+- GPU and utility children if present
+
+This is usually closer to “what the OS sees” than to a narrow JavaScript heap figure.
+
+### Numbers Do Not Match Activity Monitor Or Task Manager Exactly
+
+Different tools report different memory definitions. PinchTab currently reports RSS-based totals for the Chrome process tree it owns.
+

@@ -44,3 +44,4 @@ pinchtab.exe
 
 .gocache
 .env
+.DS_Store

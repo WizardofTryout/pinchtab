@@ -1,420 +1,194 @@
-# Raspberry Pi Setup Guide
+# Raspberry Pi
 
-Pinchtab works great on Raspberry Pi (3, 4, 5, Zero 2 W) for browser automation, web scraping, testing, and headless browsing. This guide covers installation, optimization, and common issues.
+PinchTab runs on Raspberry Pi as long as Chromium or Chrome is available. The current implementation does not need Pi-specific feature flags, but it does benefit from conservative defaults because memory is limited.
 
-## Requirements
+## Recommended Baseline
 
-- **Raspberry Pi**: Pi 3, 4, 5, or Zero 2 W (ARM64/aarch64)
-- **OS**: Raspberry Pi OS (64-bit recommended) or Ubuntu
-- **RAM**: 2GB+ recommended (1GB works for headless with low tab counts)
-- **Node.js**: 18+ (install via [nvm](https://github.com/nvm-sh/nvm) recommended)
-- **Chrome/Chromium**: Required (not bundled with pinchtab)
+- Raspberry Pi OS or Ubuntu on ARM64
+- 64-bit userspace if possible
+- Chromium installed locally
+- headless mode by default
+- low tab counts on smaller boards
 
-## Installation
+## Install Chromium
 
-### Step 1: Install Chrome/Chromium
-
-Pinchtab requires Chrome or Chromium. Install it first:
+On Raspberry Pi OS:
 
 ```bash
 sudo apt update
 sudo apt install -y chromium-browser
 ```
 
-Verify installation:
+Verify the binary:
+
 ```bash
 which chromium-browser
-# Should output: /usr/bin/chromium-browser
+which chromium
 ```
 
-> **ARM64 Optimization**: Pinchtab automatically detects ARM64/ARM architecture and prioritizes `chromium-browser` for optimal Raspberry Pi compatibility. No manual configuration needed!
-
-### Step 2: Install Node.js
-
-**Option A: Via nvm (recommended)**
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
-source ~/.bashrc  # or ~/.zshrc
-nvm install 22
-nvm use 22
-```
-
-**Option B: Via apt** (usually outdated, not recommended)
-```bash
-sudo apt install -y nodejs npm
-```
-
-Verify:
-```bash
-node -v  # Should be 18+
-npm -v
-```
-
-### Step 3: Install Pinchtab
+If auto-detection misses it, set:
 
 ```bash
-curl -fsSL https://pinchtab.com/install.sh | bash
+CHROME_BIN=/usr/bin/chromium-browser pinchtab
 ```
 
-Or manually via npm:
-```bash
-npm install -g pinchtab
-```
+## Install PinchTab
 
-### Step 4: Start Pinchtab
+Use your normal PinchTab install path for the platform, or build the binary from this repository:
 
 ```bash
-pinchtab
+go build -o pinchtab ./cmd/pinchtab
 ```
 
-First startup takes ~5-10 seconds as Chrome initializes. You should see:
-```
-INFO starting chrome initialization headless=true
-INFO chrome initialized successfully
-INFO Bridge server listening addr=127.0.0.1:9867
-```
-
-Test it:
-```bash
-curl http://localhost:9867/health
-```
-
-## Configuration for Raspberry Pi
-
-### Headless Mode (Default)
-
-By default, pinchtab runs Chrome in headless mode (no GUI), which is perfect for Pi:
+Then start it:
 
 ```bash
-pinchtab  # Headless by default
+./pinchtab
 ```
 
-### Headed Mode (with Desktop)
+## Pi-Friendly Config
 
-If you're running Raspberry Pi OS with desktop and want to see the browser:
+Create a config file and keep most settings there instead of relying on old environment variables.
 
-```bash
-BRIDGE_HEADLESS=false pinchtab
-```
+Example:
 
-### Memory Optimization
-
-Raspberry Pi has limited RAM. Optimize pinchtab for lower memory usage:
-
-**Limit max tabs:**
-```bash
-BRIDGE_MAX_TABS=5 pinchtab
-```
-
-**Disable images (saves bandwidth + memory):**
-```bash
-BRIDGE_BLOCK_IMAGES=true pinchtab
-```
-
-**Block ads (saves bandwidth):**
-```bash
-BRIDGE_BLOCK_ADS=true pinchtab
-```
-
-**Combined example:**
-```bash
-BRIDGE_MAX_TABS=5 BRIDGE_BLOCK_IMAGES=true BRIDGE_BLOCK_ADS=true pinchtab
-```
-
-### Storage Location
-
-On Pi, you might want to use a USB drive or external storage for the Chrome profile:
-
-```bash
-BRIDGE_PROFILE=/mnt/usb/pinchtab-profile pinchtab
-```
-
-Or create a persistent config:
-```bash
-mkdir -p ~/.config/pinchtab
-cat > ~/.config/pinchtab/config.json <<EOF
+```json
 {
-  "port": "9867",
-  "headless": true,
-  "maxTabs": 5,
-  "profileDir": "/mnt/usb/pinchtab-profile"
+  "browser": {
+    "binary": "/usr/bin/chromium-browser",
+    "extraFlags": "--disable-gpu --disable-dev-shm-usage"
+  },
+  "instanceDefaults": {
+    "mode": "headless",
+    "maxTabs": 5,
+    "blockImages": true,
+    "blockAds": true
+  },
+  "profiles": {
+    "baseDir": "/home/pi/.config/pinchtab/profiles",
+    "defaultProfile": "default"
+  }
 }
-EOF
 ```
 
-## Performance Tips
+Run with it:
 
-### 1. Use Headless Mode
-
-Headless mode uses significantly less RAM than headed:
 ```bash
-# Default is headless=true, but you can be explicit:
-BRIDGE_HEADLESS=true pinchtab
+PINCHTAB_CONFIG=/home/pi/.config/pinchtab/config.json ./pinchtab
 ```
 
-### 2. Reduce Chrome Flags
+## Headless Vs Headed
 
-Add lighter-weight Chrome flags:
-```bash
-CHROME_FLAGS="--disable-gpu --disable-software-rasterizer --disable-dev-shm-usage" pinchtab
+For most Raspberry Pi workloads, keep the default:
+
+```json
+{
+  "instanceDefaults": {
+    "mode": "headless"
+  }
+}
 ```
 
-### 3. Swap Space (for 1GB Pi models)
+If you are using a desktop session and want a visible browser, switch to:
 
-If you have only 1GB RAM, increase swap:
-```bash
-sudo dphys-swapfile swapoff
-sudo nano /etc/dphys-swapfile
-# Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=1024
-sudo dphys-swapfile setup
-sudo dphys-swapfile swapon
+```json
+{
+  "instanceDefaults": {
+    "mode": "headed"
+  }
+}
 ```
 
-### 4. Overclock (Carefully)
+Headed mode costs more RAM and is usually best kept for debugging.
 
-For Pi 4/5, mild overclocking can improve performance:
-```bash
-sudo raspi-config
-# Performance Options → Overclock → Moderate
+## Storage
+
+If the SD card is small or slow, move profile storage to a larger drive:
+
+```json
+{
+  "profiles": {
+    "baseDir": "/mnt/usb/pinchtab-profiles",
+    "defaultProfile": "default"
+  },
+  "server": {
+    "stateDir": "/mnt/usb/pinchtab-state"
+  }
+}
 ```
 
-⚠️ **Ensure adequate cooling** — use a heatsink or fan.
+This is the current supported way to relocate data. Keep using the nested config keys rather than older flat config files.
 
-### 5. Use Lightweight OS
+## Running As A Service
 
-Consider **Raspberry Pi OS Lite** (no desktop) for dedicated automation:
-```bash
-# Install minimal OS, then:
-sudo apt install -y chromium-browser nodejs npm
-npm install -g pinchtab
-```
+Example `systemd` unit:
 
-## Running as a Service
-
-Run pinchtab automatically on boot using systemd:
-
-### Create service file:
-```bash
-sudo nano /etc/systemd/system/pinchtab.service
-```
-
-**Content:**
 ```ini
 [Unit]
-Description=Pinchtab Browser Automation
+Description=PinchTab Browser Service
 After=network.target
 
 [Service]
 Type=simple
 User=pi
 WorkingDirectory=/home/pi
-ExecStart=/home/pi/.nvm/versions/node/v22.13.0/bin/pinchtab
+ExecStart=/home/pi/pinchtab
+Environment=PINCHTAB_CONFIG=/home/pi/.config/pinchtab/config.json
+Environment=CHROME_BIN=/usr/bin/chromium-browser
 Restart=always
 RestartSec=10
-Environment="BRIDGE_HEADLESS=true"
-Environment="BRIDGE_MAX_TABS=5"
-Environment="BRIDGE_BLOCK_IMAGES=true"
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-**Note:** Adjust `ExecStart` path to match your Node.js installation:
-```bash
-which pinchtab  # Use this path in ExecStart
-```
+Then:
 
-### Enable and start:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable pinchtab
 sudo systemctl start pinchtab
-```
-
-### Check status:
-```bash
 sudo systemctl status pinchtab
 ```
 
-### View logs:
-```bash
-sudo journalctl -u pinchtab -f
-```
+## Performance Tips
 
-## Common Issues
+- keep `instanceDefaults.maxTabs` low on 1 GB and 2 GB boards
+- prefer headless mode
+- block images and ads for scraping-heavy workloads
+- move profiles to faster external storage if the SD card is the bottleneck
+- add swap carefully if you are hitting OOM conditions often
 
-### Issue: "Chrome binary not found"
+## Troubleshooting
 
-**Cause:** Chromium not installed.
+### Chrome Binary Not Found
 
-**Solution:**
-```bash
-sudo apt install -y chromium-browser
-```
-
-If chromium is installed but pinchtab can't find it:
-```bash
-export CHROME_BIN=/usr/bin/chromium-browser
-pinchtab
-```
-
-Make it permanent:
-```bash
-echo 'export CHROME_BIN=/usr/bin/chromium-browser' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### Issue: Chrome crashes or hangs
-
-**Cause:** Out of memory.
-
-**Solutions:**
-1. Reduce max tabs: `BRIDGE_MAX_TABS=3 pinchtab`
-2. Block images: `BRIDGE_BLOCK_IMAGES=true pinchtab`
-3. Increase swap (see Performance Tips)
-4. Close other applications
-
-### Issue: "Address already in use"
-
-**Cause:** Port 9867 is occupied.
-
-**Solution:** Use a different port:
-```bash
-BRIDGE_PORT=9868 pinchtab
-```
-
-### Issue: Slow page loads
-
-**Cause:** Limited bandwidth or CPU.
-
-**Solutions:**
-1. Block images/ads: `BRIDGE_BLOCK_IMAGES=true BRIDGE_BLOCK_ADS=true pinchtab`
-2. Increase navigation timeout:
-   ```json
-   {
-     "navigateSec": 90
-   }
-   ```
-3. Use wired Ethernet instead of Wi-Fi
-
-### Issue: npm install fails with EACCES
-
-**Cause:** Permission error.
-
-**Solution:** Use nvm (recommended) or fix npm permissions:
-```bash
-# Option 1: Use nvm (best)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
-nvm install 22
-npm install -g pinchtab
-
-# Option 2: Fix npm permissions
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
-npm install -g pinchtab
-```
-
-## Example Use Cases
-
-### Web Scraping Cron Job
+Set `CHROME_BIN` explicitly:
 
 ```bash
-#!/bin/bash
-# scrape-daily.sh
-
-curl -X POST http://localhost:9867/tabs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://pinchtab.com",
-    "actions": [
-      {"kind": "wait", "selector": ".content"}
-    ]
-  }' | jq -r '.snapshot' > /home/pi/data/snapshot-$(date +%Y%m%d).json
+CHROME_BIN=/usr/bin/chromium-browser ./pinchtab
 ```
 
-Schedule with cron:
-```bash
-crontab -e
-# Add:
-0 2 * * * /home/pi/scrape-daily.sh
+### Out Of Memory
+
+Reduce workload in config:
+
+```json
+{
+  "instanceDefaults": {
+    "maxTabs": 3,
+    "blockImages": true,
+    "mode": "headless"
+  }
+}
 ```
 
-### Home Automation Dashboard
+### Port Already In Use
 
-Render a web dashboard on an HDMI screen:
-```bash
-BRIDGE_HEADLESS=false pinchtab
-curl -X POST http://localhost:9867/tabs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "http://homeassistant.local:8123",
-    "kiosk": true
-  }'
-```
-
-### Automated Testing
-
-Run Playwright/Puppeteer tests against pinchtab:
-```javascript
-// test.js
-const { chromium } = require('playwright');
-
-(async () => {
-  const browser = await chromium.connectOverCDP('http://localhost:9867');
-  const page = await browser.newPage();
-  await page.goto('https://pinchtab.com');
-  console.log(await page.title());
-  await browser.close();
-})();
-```
-
-## Monitoring
-
-Check pinchtab health and resource usage:
+Override the server port:
 
 ```bash
-# Health check
-curl http://localhost:9867/health
-
-# Metrics (if enabled)
-curl http://localhost:9867/metrics
-
-# System resources
-htop  # Install: sudo apt install htop
+PINCHTAB_PORT=9868 ./pinchtab
 ```
 
-## Upgrading
 
-```bash
-npm update -g pinchtab
-pinchtab --version
-```
-
-## Uninstallation
-
-```bash
-# Remove pinchtab
-npm uninstall -g pinchtab
-
-# Remove Chrome profile data
-rm -rf ~/.config/pinchtab
-```
-
-## Further Reading
-
-- [Data Storage Guide](data-storage.md) — Where pinchtab stores files
-- [Configuration Reference](../references/configuration.md) — All config options
-- [API Reference](../references/api-reference.json) — REST API documentation
-- [Memory Monitoring](memory-monitoring.md) — Track memory usage
-
-## Community
-
-- **GitHub**: https://github.com/pinchtab/pinchtab
-- **Issues**: https://github.com/pinchtab/pinchtab/issues
-- **Discussions**: https://github.com/pinchtab/pinchtab/discussions
-
----
-
-**Have a cool Raspberry Pi + Pinchtab project?** Share it in GitHub Discussions!

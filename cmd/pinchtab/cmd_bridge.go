@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,11 +16,11 @@ import (
 	"github.com/pinchtab/pinchtab/internal/handlers"
 )
 
-// runBridgeServer starts a bridge server without orchestrator or dashboard
+// runBridgeServer starts a bridge without orchestrator or dashboard
 // This is used for spawned instances by the orchestrator
 func runBridgeServer(cfg *config.RuntimeConfig) {
 	listenAddr := cfg.ListenAddr()
-	slog.Info("🦀 Pinchtab Bridge Server", "listen", listenAddr, "profile", cfg.ProfileDir)
+	slog.Info("🦀 Pinchtab Bridge", "listen", listenAddr, "profile", cfg.ProfileDir)
 
 	// Create a bridge instance with lazy initialization
 	// Chrome will be initialized on first request via ensureChrome()
@@ -37,7 +34,7 @@ func runBridgeServer(cfg *config.RuntimeConfig) {
 	shutdownOnce := &sync.Once{}
 	doShutdown := func() {
 		shutdownOnce.Do(func() {
-			slog.Info("shutting down bridge server...")
+			slog.Info("shutting down bridge...")
 		})
 	}
 	h.RegisterRoutes(mux, doShutdown)
@@ -48,7 +45,7 @@ func runBridgeServer(cfg *config.RuntimeConfig) {
 	// HTTP server
 	server := &http.Server{
 		Addr:              listenAddr,
-		Handler:           recoveryMiddleware(loggingMiddleware(handlers.AuthMiddleware(cfg, mux))),
+		Handler:           handlers.RequestIDMiddleware(handlers.LoggingMiddleware(handlers.AuthMiddleware(cfg, mux))),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -56,7 +53,7 @@ func runBridgeServer(cfg *config.RuntimeConfig) {
 	}
 
 	go func() {
-		slog.Info("bridge server listening", "addr", listenAddr)
+		slog.Info("bridge listening", "addr", listenAddr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "err", err)
 			os.Exit(1)
@@ -75,59 +72,4 @@ func runBridgeServer(cfg *config.RuntimeConfig) {
 	if err := server.Shutdown(ctx); err != nil {
 		slog.Error("shutdown error", "err", err)
 	}
-}
-
-// Simple middleware to log HTTP requests
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		recorder := &statusRecorder{ResponseWriter: w, statusCode: 200}
-
-		next.ServeHTTP(recorder, r)
-
-		slog.Info("request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", recorder.statusCode,
-			"ms", time.Since(start).Milliseconds(),
-		)
-	})
-}
-
-// recoveryMiddleware catches panics in HTTP handlers and returns a 500
-// instead of crashing the bridge process. Go's net/http server only
-// recovers panics in the serve goroutine; this middleware provides the
-// same guarantee for the handler level and logs the panic for debugging.
-func recoveryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if p := recover(); p != nil {
-				slog.Error("handler panic recovered",
-					"method", r.Method,
-					"path", r.URL.Path,
-					"panic", fmt.Sprintf("%v", p),
-				)
-				http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (r *statusRecorder) WriteHeader(code int) {
-	r.statusCode = code
-	r.ResponseWriter.WriteHeader(code)
-}
-
-func (r *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	h, ok := r.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, fmt.Errorf("given http.ResponseWriter is not a http.Hijacker")
-	}
-	return h.Hijack()
 }

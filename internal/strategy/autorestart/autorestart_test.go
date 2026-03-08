@@ -563,7 +563,7 @@ func (m *mockCmd) Wait() error { return nil }
 func (m *mockCmd) PID() int    { return 1234 }
 func (m *mockCmd) Cancel()     {}
 
-func (r *mockRunner) Run(_ context.Context, _ string, _ []string, _, _ io.Writer) (orchestrator.Cmd, error) {
+func (r *mockRunner) Run(_ context.Context, _ string, _ []string, _ []string, _, _ io.Writer) (orchestrator.Cmd, error) {
 	return &mockCmd{}, nil
 }
 
