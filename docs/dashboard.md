@@ -28,6 +28,8 @@ The UI is a React SPA served by the Go server.
 
 ## Monitoring page
 
+![Dashboard Instances](media/dashboard-instances.jpeg)
+
 The Monitoring page is the default view.
 
 It shows:
@@ -55,6 +57,8 @@ Operational data comes from:
 ---
 
 ## Profiles page
+
+![Dashboard Profiles](media/dashboard-profiles.jpeg)
 
 The Profiles page manages saved browser profiles.
 
@@ -126,6 +130,8 @@ From there you can:
 ---
 
 ## Settings page
+
+![Dashboard Settings](media/dashboard-settings.jpeg)
 
 The Settings page combines local dashboard preferences with backend configuration.
 
