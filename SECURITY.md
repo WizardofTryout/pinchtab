@@ -23,4 +23,15 @@ Please include:
 - Steps to reproduce (proof of concept).
 - Potential impact.
 
-We will acknowledge receipt of your report within 48 hours and provide a timeline for a fix if necessary.
+## Secret Management
+
+To prevent the accidental exposure of sensitive information, we adhere to the following practices:
+
+1.  **Environment Variables:** All API keys, tokens, and credentials MUST be stored in a `.env` file or passed as environment variables.
+2.  **No Committing Secrets:** The `.env` file is included in `.gitignore` and must never be committed to version control. Use `.env.example` as a template for local setup.
+3.  **Automated Audit:** We use a custom security audit script (`scripts/security_audit.py`) to scan for potential secrets. This script runs as a pre-commit hook.
+4.  **Log Masking:** Developers must ensure that sensitive data is masked or omitted from application logs.
+
+If you accidentally commit a secret:
+1.  **Rotate the secret immediately.**
+2.  **Remove the secret from Git history** using tools like `git filter-repo` or `BFG Repo-Cleaner`.
