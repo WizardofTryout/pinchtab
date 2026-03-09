@@ -219,6 +219,86 @@ pt() { pinchtab "$@"; }
 pt_get() { pinchtab GET "$1"; echo "$RESULT"; }
 pt_post() { pinchtab POST "$1" -d "$2"; echo "$RESULT"; }
 
+# ================================================================
+# Page-specific assertions (we control the fixtures!)
+# ================================================================
+
+# buttons.html: Increment, Decrement, Reset, Toggle visibility, Show Message
+assert_buttons_page() {
+  local snap="$1"
+  local expected_buttons=("Increment" "Decrement" "Reset")
+  local found=0
+  
+  for btn in "${expected_buttons[@]}"; do
+    if echo "$snap" | jq -e ".nodes[] | select(.name == \"$btn\")" > /dev/null 2>&1; then
+      ((found++))
+    fi
+  done
+  
+  if [ "$found" -ge 3 ]; then
+    echo -e "  ${GREEN}✓${NC} buttons.html: found $found/3 expected buttons"
+    ((ASSERTIONS_PASSED++)) || true
+  else
+    echo -e "  ${RED}✗${NC} buttons.html: found only $found/3 expected buttons"
+    ((ASSERTIONS_FAILED++)) || true
+  fi
+}
+
+# form.html: username, email, password fields + Submit button
+assert_form_page() {
+  local snap="$1"
+  local checks=0
+  
+  # Check for textboxes (username, email)
+  local textboxes=$(echo "$snap" | jq '[.nodes[] | select(.role == "textbox")] | length')
+  [ "$textboxes" -ge 2 ] && ((checks++))
+  
+  # Check for Submit button
+  echo "$snap" | jq -e '.nodes[] | select(.name == "Submit")' > /dev/null 2>&1 && ((checks++))
+  
+  # Check for combobox (country select)
+  echo "$snap" | jq -e '.nodes[] | select(.role == "combobox")' > /dev/null 2>&1 && ((checks++))
+  
+  if [ "$checks" -ge 3 ]; then
+    echo -e "  ${GREEN}✓${NC} form.html: found inputs, submit button, and select"
+    ((ASSERTIONS_PASSED++)) || true
+  else
+    echo -e "  ${RED}✗${NC} form.html: missing expected elements ($checks/3)"
+    ((ASSERTIONS_FAILED++)) || true
+  fi
+}
+
+# table.html: Alice Johnson, bob@example.com, etc.
+assert_table_page() {
+  local text="$1"
+  local checks=0
+  
+  echo "$text" | grep -q "Alice Johnson" && ((checks++))
+  echo "$text" | grep -q "bob@example.com" && ((checks++))
+  echo "$text" | grep -q "Engineer" && ((checks++))
+  
+  if [ "$checks" -ge 3 ]; then
+    echo -e "  ${GREEN}✓${NC} table.html: found expected table data"
+    ((ASSERTIONS_PASSED++)) || true
+  else
+    echo -e "  ${RED}✗${NC} table.html: missing expected data ($checks/3)"
+    ((ASSERTIONS_FAILED++)) || true
+  fi
+}
+
+# index.html: Welcome header
+assert_index_page() {
+  local snap="$1"
+  
+  if echo "$snap" | jq -e '.title' | grep -q "E2E Test"; then
+    echo -e "  ${GREEN}✓${NC} index.html: correct title"
+    ((ASSERTIONS_PASSED++)) || true
+  else
+    echo -e "  ${RED}✗${NC} index.html: wrong title"
+    ((ASSERTIONS_FAILED++)) || true
+  fi
+}
+
 # Print summary
 print_summary() {
   local total=$((TESTS_PASSED + TESTS_FAILED))

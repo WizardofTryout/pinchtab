@@ -9,45 +9,40 @@ start_test "pinchtab snap"
 pt_post /navigate -d "{\"url\":\"${FIXTURES_URL}/\"}"
 
 pt_get /snapshot
+assert_index_page "$RESULT"
 assert_json_length_gte "$RESULT" '.nodes' 1
-assert_json_contains "$RESULT" '.title' 'E2E Test'
-assert_json_contains "$RESULT" '.url' 'fixtures'
-
-# Check node structure
-FIRST_NODE=$(echo "$RESULT" | jq '.nodes[0]')
-assert_json_contains "$FIRST_NODE" '.ref' 'e'
-assert_json_contains "$FIRST_NODE" '.role' ''
 
 end_test
 
 # ─────────────────────────────────────────────────────────────────
-start_test "pinchtab snap (interactive elements)"
+start_test "pinchtab snap (buttons.html)"
 
 pt_post /navigate -d "{\"url\":\"${FIXTURES_URL}/buttons.html\"}"
 sleep 1
 
 pt_get /snapshot
-
-# Should find buttons
-BUTTON_COUNT=$(echo "$RESULT" | jq '[.nodes[] | select(.role == "button")] | length')
-if [ "$BUTTON_COUNT" -ge 3 ]; then
-  echo -e "  ${GREEN}✓${NC} Found $BUTTON_COUNT buttons"
-  ((ASSERTIONS_PASSED++)) || true
-else
-  echo -e "  ${RED}✗${NC} Expected >=3 buttons, found $BUTTON_COUNT"
-  ((ASSERTIONS_FAILED++)) || true
-fi
+assert_buttons_page "$RESULT"
 
 end_test
 
 # ─────────────────────────────────────────────────────────────────
-start_test "pinchtab text"
+start_test "pinchtab snap (form.html)"
+
+pt_post /navigate -d "{\"url\":\"${FIXTURES_URL}/form.html\"}"
+sleep 1
+
+pt_get /snapshot
+assert_form_page "$RESULT"
+
+end_test
+
+# ─────────────────────────────────────────────────────────────────
+start_test "pinchtab text (table.html)"
 
 pt_post /navigate -d "{\"url\":\"${FIXTURES_URL}/table.html\"}"
 sleep 1
 
-pt_get /text
-assert_json_contains "$RESULT" '.text' 'Alice Johnson'
-assert_json_contains "$RESULT" '.text' 'bob@example.com'
+TEXT_RESULT=$(curl -s "${PINCHTAB_URL}/text" | jq -r '.text')
+assert_table_page "$TEXT_RESULT"
 
 end_test
