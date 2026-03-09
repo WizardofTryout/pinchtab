@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/chromedp/chromedp"
 	"github.com/pinchtab/pinchtab/internal/bridge"
 	"github.com/pinchtab/pinchtab/internal/idpi"
 	"github.com/pinchtab/pinchtab/internal/semantic"
@@ -112,9 +114,12 @@ func (h *Handlers) HandleFind(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// IDPI: scan AX-node text corpus for injection patterns before semantic matching.
-	// In strict mode a detected threat blocks the request (HTTP 403); in warn mode
-	// the response headers and IDPIWarning field carry the advisory.
+	// IDPI: scan AX-node text corpus and full page body text for injection
+	// patterns before semantic matching. The interactive AX filter omits
+	// non-interactive elements (<p>, headings, etc.), so body.innerText is
+	// fetched as a 3-second sub-operation to cover the full visible page.
+	// In strict mode a detected threat blocks the request (HTTP 403); in
+	// warn mode the response headers and IDPIWarning field carry the advisory.
 	var idpiWarning string
 	if h.Config.IDPI.Enabled && h.Config.IDPI.ScanContent {
 		var sb strings.Builder
@@ -128,6 +133,13 @@ func (h *Handlers) HandleFind(w http.ResponseWriter, r *http.Request) {
 				sb.WriteByte('\n')
 			}
 		}
+		// Augment with full body text to catch injection in non-interactive
+		// content that the interactive AX filter omits (paragraphs, headings).
+		var bodyText string
+		scanCtx, scanCancel := context.WithTimeout(ctxTab, 3*time.Second)
+		_ = chromedp.Run(scanCtx, chromedp.Evaluate(`document.body ? document.body.innerText : ""`, &bodyText))
+		scanCancel()
+		sb.WriteString(bodyText)
 		if corpus := sb.String(); corpus != "" {
 			if ir := idpi.ScanContent(corpus, h.Config.IDPI); ir.Threat {
 				if ir.Blocked {

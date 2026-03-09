@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -98,10 +99,15 @@ func StartServer(cfg ServerConfig) (*Server, error) {
 	}
 	fmt.Fprintf(os.Stderr, "testutil: test dir: %s\n", testDir)
 
+	binaryName := "pinchtab"
+	if runtime.GOOS == "windows" {
+		binaryName = "pinchtab.exe"
+	}
+
 	s := &Server{
 		URL:        fmt.Sprintf("http://localhost:%s", cfg.Port),
 		Dir:        testDir,
-		BinaryPath: filepath.Join(testDir, "pinchtab"),
+		BinaryPath: filepath.Join(testDir, binaryName),
 		StateDir:   filepath.Join(testDir, "state"),
 		ProfileDir: filepath.Join(testDir, "profiles"),
 	}
@@ -118,13 +124,21 @@ func StartServer(cfg ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("write config: %w", err)
 	}
 
-	build := exec.Command("go", "build", "-o", s.BinaryPath, "./cmd/pinchtab/") // #nosec G204 -- BinaryPath is from os.MkdirTemp, not user input
-	build.Dir = FindRepoRoot()
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		s.Cleanup()
-		return nil, fmt.Errorf("build pinchtab: %w", err)
+	// PINCHTAB_BINARY allows callers to supply a pre-built binary, which
+	// is useful on managed Windows systems where Application Control
+	// policies block executables built into %TEMP%.
+	if prebuilt := os.Getenv("PINCHTAB_BINARY"); prebuilt != "" {
+		s.BinaryPath = prebuilt
+		fmt.Fprintf(os.Stderr, "testutil: using pre-built binary: %s\n", prebuilt)
+	} else {
+		build := exec.Command("go", "build", "-o", s.BinaryPath, "./cmd/pinchtab/") // #nosec G204 -- BinaryPath is from os.MkdirTemp, not user input
+		build.Dir = FindRepoRoot()
+		build.Stdout = os.Stdout
+		build.Stderr = os.Stderr
+		if err := build.Run(); err != nil {
+			s.Cleanup()
+			return nil, fmt.Errorf("build pinchtab: %w", err)
+		}
 	}
 
 	// Strip existing BRIDGE_*/PINCHTAB_* to avoid test pollution from host config
