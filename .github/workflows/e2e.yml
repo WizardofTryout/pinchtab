@@ -10,13 +10,6 @@ on:
         description: 'Enable debug logging'
         required: false
         default: 'false'
-  push:
-    tags:
-      - 'v*'
-  pull_request:
-    paths:
-      - 'tests/e2e/**'
-      - '.github/workflows/e2e.yml'
 
 jobs:
   e2e:
