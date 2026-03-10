@@ -63,6 +63,36 @@ async function request<T>(
   return res.json();
 }
 
+async function requestText(
+  url: string,
+  options?: RequestInit,
+  meta?: RequestMeta,
+): Promise<string> {
+  const headers = new Headers(options?.headers ?? {});
+  const token = meta?.authToken?.trim() || getStoredAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const res = await fetch(BASE + url, {
+    ...options,
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    if (
+      res.status === 401 &&
+      !meta?.suppressAuthRedirect &&
+      typeof window !== "undefined"
+    ) {
+      window.localStorage.removeItem("pinchtab.auth.token");
+      dispatchAuthRequired(err.code || "unauthorized");
+    }
+    throw new Error(err.error || "Request failed");
+  }
+  return res.text();
+}
+
 // Profiles — endpoint is /profiles (no /api prefix)
 export async function fetchProfiles(): Promise<Profile[]> {
   return request<Profile[]>("/profiles");
@@ -130,6 +160,41 @@ export async function stopInstance(id: string): Promise<void> {
 
 export async function fetchInstanceTabs(id: string): Promise<InstanceTab[]> {
   return request<InstanceTab[]>(`/instances/${encodeURIComponent(id)}/tabs`);
+}
+
+export async function fetchInstanceLogs(id: string): Promise<string> {
+  return requestText(`/instances/${encodeURIComponent(id)}/logs`);
+}
+
+export function subscribeToInstanceLogs(
+  id: string,
+  handlers: { onLogs?: (logs: string) => void },
+): () => void {
+  const url = addTokenToUrl(`/instances/${encodeURIComponent(id)}/logs/stream`);
+  const es = new EventSource(url);
+
+  es.addEventListener("log", (e) => {
+    try {
+      const payload = JSON.parse(e.data) as { logs?: string };
+      handlers.onLogs?.(payload.logs || "");
+    } catch {
+      // ignore malformed events
+    }
+  });
+
+  es.onerror = () => {
+    if (!getStoredAuthToken()) {
+      dispatchAuthRequired("missing_token");
+    }
+  };
+
+  const cleanup = () => es.close();
+  window.addEventListener("beforeunload", cleanup);
+
+  return () => {
+    window.removeEventListener("beforeunload", cleanup);
+    es.close();
+  };
 }
 
 export async function fetchAllTabs(): Promise<InstanceTab[]> {

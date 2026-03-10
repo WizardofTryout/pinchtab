@@ -6,14 +6,10 @@ source "$(dirname "$0")/common.sh"
 # ─────────────────────────────────────────────────────────────────
 start_test "pinchtab snap --tab <id> (regression #207)"
 
-# Create a tab
+# Create a tab and capture its ID from the navigate response
 pt_post /navigate -d "{\"url\":\"${FIXTURES_URL}/index.html\"}"
-show_tab "created" "$(get_tab_id)"
-
-# Get tab ID from /tabs endpoint
-pt_get /tabs
-TAB_ID=$(get_last_tab)
-show_tab "listed" "$TAB_ID"
+TAB_ID=$(get_tab_id)
+show_tab "created" "$TAB_ID"
 
 # Test: /tabs/{id}/snapshot should work (was broken in #207)
 pt_get "/tabs/${TAB_ID}/snapshot"

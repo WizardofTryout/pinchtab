@@ -87,7 +87,26 @@ npm install -g pinchtab
 
 **Docker:**
 ```bash
-docker run -d -p 9867:9867 pinchtab/pinchtab
+docker run -d \
+  --name pinchtab \
+  -p 127.0.0.1:9867:9867 \
+  -v pinchtab-data:/data \
+  --shm-size=2g \
+  pinchtab/pinchtab
+```
+
+The bundled container persists its managed config at `/data/.config/pinchtab/config.json`.
+If you want to supply your own config file instead, mount it and point `PINCHTAB_CONFIG` at it:
+
+```bash
+docker run -d \
+  --name pinchtab \
+  -p 127.0.0.1:9867:9867 \
+  -e PINCHTAB_CONFIG=/config/config.json \
+  -v "$PWD/config.json:/config/config.json:ro" \
+  -v pinchtab-data:/data \
+  --shm-size=2g \
+  pinchtab/pinchtab
 ```
 
 ### Use It

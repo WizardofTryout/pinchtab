@@ -31,6 +31,7 @@ func (o *Orchestrator) RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("POST /instances/{id}/start", o.handleStartByInstanceID)
 	mux.HandleFunc("POST /instances/{id}/stop", o.handleStopByInstanceID)
 	mux.HandleFunc("GET /instances/{id}/logs", o.handleLogsByID)
+	mux.HandleFunc("GET /instances/{id}/logs/stream", o.handleLogsStreamByID)
 	mux.HandleFunc("GET /instances/{id}/tabs", o.handleInstanceTabs)
 	mux.HandleFunc("POST /instances/{id}/tabs/open", o.handleInstanceTabOpen)
 	mux.HandleFunc("POST /instances/{id}/tab", o.proxyToInstance)

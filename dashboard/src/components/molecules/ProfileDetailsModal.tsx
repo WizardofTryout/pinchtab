@@ -35,7 +35,7 @@ export default function ProfileDetailsModal({
   const [name, setName] = useState("");
   const [useWhen, setUseWhen] = useState("");
   const [tabs, setTabs] = useState<InstanceTab[]>([]);
-  const [logs] = useState(""); // TODO: fetch from /instances/{id}/logs
+  const [logs, setLogs] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
 
   const isRunning = instance?.status === "running";
@@ -59,6 +59,10 @@ export default function ProfileDetailsModal({
         ? allTabs.filter((t) => t.instanceId === instance.id)
         : [];
       setTabs(instanceTabs);
+      const instanceLogs = await api
+        .fetchInstanceLogs(instance.id)
+        .catch(() => "");
+      setLogs(instanceLogs);
     } catch (e) {
       console.error("Failed to load live data", e);
     }

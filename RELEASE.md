@@ -148,7 +148,8 @@ Depends on: `release` job (waits for goreleaser to finish)
 
 ### 3. Docker
 
-Independent job. Pushes to Docker Hub if configured.
+Goreleaser builds the pinned release image from `Dockerfile.goreleaser` and publishes it to GHCR.
+The Docker Hub job then mirrors that exact multi-arch manifest to Docker Hub, so the public release image does not rebuild from the floating development Dockerfile.
 
 ## Troubleshooting
 

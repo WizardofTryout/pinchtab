@@ -143,6 +143,74 @@ func (o *Orchestrator) handleLogsByID(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(logs))
 }
 
+func (o *Orchestrator) handleLogsStreamByID(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+		http.Error(w, "streaming deadline unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	id := r.PathValue("id")
+	initial, err := o.Logs(id)
+	if err != nil {
+		web.Error(w, 404, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	writeLogs := func(logs string) bool {
+		data, err := json.Marshal(map[string]string{"logs": logs})
+		if err != nil {
+			return false
+		}
+		if _, err := fmt.Fprintf(w, "event: log\ndata: %s\n\n", data); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	if !writeLogs(initial) {
+		return
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	last := initial
+	for {
+		select {
+		case <-ticker.C:
+			current, err := o.Logs(id)
+			if err != nil {
+				return
+			}
+			if current != last {
+				last = current
+				if !writeLogs(current) {
+					return
+				}
+				continue
+			}
+			if _, err := fmt.Fprintf(w, ": keepalive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
 func (o *Orchestrator) handleStartInstance(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ProfileID      string   `json:"profileId,omitempty"`

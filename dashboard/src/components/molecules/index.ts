@@ -1,6 +1,7 @@
 export { default as NavBar } from "./NavBar";
 export { default as ProfileCard } from "./ProfileCard";
 export { default as ProfileDetailsModal } from "./ProfileDetailsModal";
+export { default as ProfileDetailsPanel } from "./ProfileDetailsPanel";
 export { default as ScreencastTile } from "./ScreencastTile";
 export { default as InstanceCard } from "./InstanceCard";
 export { default as InstanceListItem } from "./InstanceListItem";
